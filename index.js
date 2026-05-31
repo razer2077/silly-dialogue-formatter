@@ -447,8 +447,8 @@ function startsWithActionSignature(text) {
 }
 
 function splitSegments(text) {
-  // Делим по: знак_препинания + любые_пробелы + тире + любые_пробелы (минимум 1 с какой-то стороны)
-  const normalized = text.replace(/([.,!?…:;])\s*[—–-]\s+/g, '$1\u0002');
+  // Делим по: знак_препинания (включая 2+ точки) + любые_пробелы + тире + пробелы
+  const normalized = text.replace(/(\.{2,}|[.,!?…:;])\s*[—–-]\s+/g, '$1\u0002');
   // Также ловим вариант: пробелы + тире + без пробела справа НО за тире заглавная
   const normalized2 = normalized.replace(/([.,!?…:;])\s+[—–-](?=[А-ЯЁA-Z])/g, '$1\u0002');
   return normalized2.split('\u0002').map(p => p.trim()).filter(Boolean);
@@ -539,12 +539,6 @@ function format(text) {
 // ИНТЕГРАЦИЯ С SILLYTAVERN
 // ============================================================
 
-
-
-// ============================================================
-// ИНТЕГРАЦИЯ С SILLYTAVERN
-// ============================================================
-
 function processMessage(messageId) {
   try {
     const ctx = SillyTavern.getContext();
@@ -577,4 +571,4 @@ eventSource.on(event_types.MESSAGE_RECEIVED, processMessage);
 eventSource.on(event_types.MESSAGE_EDITED, processMessage);
 eventSource.on(event_types.GENERATION_ENDED, processMessage);
 
-console.log('[Russian Dialogue Formatter] loaded, version 1.6.2');
+console.log('[Russian Dialogue Formatter] loaded, version 1.6.3');
