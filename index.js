@@ -156,6 +156,16 @@ function classify(segment) {
   return 'speech';
 }
 
+// Сильный сигнал ремарки в НАЧАЛЕ сегмента — для арбитража когда классификатор колеблется
+function startsWithActionSignature(text) {
+  const t = text.trim();
+  const firstSent = t.split(/[.!?…]/)[0].slice(0, 60);
+  if (/^(он|она|они|оно)\b/i.test(firstSent)) return true;
+  if (actionRe().test(firstSent.slice(0, 30))) return true;
+  if (nounRe().test(firstSent) && actionRe().test(firstSent)) return true;
+  return false;
+}
+
 function splitSegments(text) {
   const parts = [];
   let cur = '';
@@ -209,12 +219,12 @@ function formatParagraph(paragraph) {
     const prevType = classified[i-1].type;
     const expected = prevType === 'speech' ? 'action' : 'speech';
     if (classified[i].initialType !== expected) {
-      const t = classified[i].text;
-      const hasNoun = nounRe().test(t);
-      const hasVerb = actionRe().test(t);
-      const hasPronoun = pronounRe().test(t);
-      const strong = (hasNoun && hasVerb) || (hasPronoun && hasVerb);
-      classified[i].type = (expected === 'speech' && strong) ? 'action' : expected;
+      // Оставляем action только если сегмент начинается с признака ремарки
+      if (expected === 'speech' && startsWithActionSignature(classified[i].text)) {
+        classified[i].type = 'action';
+      } else {
+        classified[i].type = expected;
+      }
     }
   }
 
@@ -261,4 +271,4 @@ function processMessage(messageId) {
 eventSource.on(event_types.MESSAGE_RECEIVED, processMessage);
 eventSource.on(event_types.MESSAGE_EDITED, processMessage);
 
-console.log('[Russian Dialogue Formatter] loaded, version 1.0.0');
+console.log('[Russian Dialogue Formatter] loaded, version 1.1.0');
