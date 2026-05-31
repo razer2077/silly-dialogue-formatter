@@ -1,0 +1,11 @@
+{
+  "display_name": "Russian Dialogue Formatter",
+  "loading_order": 100,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "",
+  "author": "you",
+  "version": "1.0.0",
+  "homePage": ""
+}
