@@ -215,15 +215,34 @@ function classify(segment) {
   if (actionRe().test(s)) return 'action';
   if (nounRe().test(s)) return 'action';
   if (pronounRe().test(s)) return 'action';
+  // Heuristic: если сегмент начинается с заглавной русской/латинской буквы (имя собственное)
+  // и кончается на точку (повествовательное предложение, не вопрос/восклицание) — вероятно это ремарка
+  // Применяется только к НЕ начинающимся с тире сегментам.
   return 'speech';
+}
+
+// Начинается ли сегмент с именованного субъекта (Имя собственное) — индикатор ремарки
+function startsWithProperName(text) {
+  const t = text.trim();
+  // Заглавная русская или латинская буква + строчные буквы (минимум 2 символа всего)
+  // и НЕ стандартные начала речи: «Я», «А», «И», «Но», «О», «Ну», «Да», «Нет», «Эх», «Ах»
+  const m = t.match(/^([А-ЯЁA-Z][а-яёa-z\-]+)/);
+  if (!m) return false;
+  const word = m[1];
+  // Защищённые слова — типичные начала речи
+  if (/^(Я|А|И|Но|О|Ну|Да|Нет|Так|Эх|Ах|Ох|Ой|Эй|Что|Кто|Где|Когда|Как|Почему|Зачем|Только|Ведь|Вот|Тут|Там|Здесь|Это|Тот|Эта|Этот|Пусть|Пока|Хотя|Если|Иначе|Может|Мол|Слыш|Слушай|Знаешь|Понимаешь|Wait|Hello|Yes|No|Hi|Hey|Oh|Stop)$/i.test(word)) return false;
+  return word.length >= 3;
 }
 
 // Сильный сигнал ремарки в НАЧАЛЕ сегмента — для арбитража когда классификатор колеблется
 function startsWithActionSignature(text) {
   const t = text.trim();
   const firstSent = t.split(/[.!?…]/)[0].slice(0, 60);
+  // Местоимение в самом начале — типичная ремарка
   if (/^(он|она|они|оно)\b/i.test(firstSent)) return true;
-  if (actionRe().test(firstSent.slice(0, 30))) return true;
+  // Глагол ремарки в первых 30 символах И начинается с СТРОЧНОЙ буквы (типичная ремарка после реплики)
+  if (/^[а-яё]/.test(firstSent) && actionRe().test(firstSent.slice(0, 30))) return true;
+  // Существительное-маркер (ремарочное) + глагол в первом предложении
   if (nounRe().test(firstSent) && actionRe().test(firstSent)) return true;
   return false;
 }
@@ -234,14 +253,19 @@ function splitSegments(text) {
   let i = 0;
   while (i < text.length) {
     const ch = text[i];
-    if (ch === ' ' && (text[i+1] === '—' || text[i+1] === '–') && text[i+2] === ' ') {
+    // Разделитель: пробел + (— или – или -) + пробел
+    if (ch === ' ' && (text[i+1] === '—' || text[i+1] === '–' || text[i+1] === '-') && text[i+2] === ' ') {
       const last = cur[cur.length - 1];
+      // Для длинного тире: достаточно знака препинания слева ИЛИ начала реплики
+      // Для короткого дефиса: только если знак препинания слева (чтоб не цепляться за дефисы в словах)
+      const isDash = text[i+1] === '—' || text[i+1] === '–';
       if (last && '.,!?…:;'.includes(last)) {
         parts.push(cur);
         cur = '';
         i += 3;
         continue;
       }
+      // Для короткого "-" в качестве разделителя нужно чтобы он стоял в начале строки или после пунктуации — это уже выше
     }
     cur += ch;
     i++;
@@ -255,8 +279,11 @@ function formatParagraph(paragraph) {
   const trimmed = paragraph.trim();
   if (/^["“”«*]/.test(trimmed)) return paragraph;
 
-  const startsWithDash = /^[—–]\s*/.test(trimmed);
-  let text = startsWithDash ? trimmed.replace(/^[—–]\s*/, '') : trimmed;
+  const startsWithDash = /^[—–-]\s*/.test(trimmed);
+  let text = startsWithDash ? trimmed.replace(/^[—–-]\s*/, '') : trimmed;
+
+  // Нормализуем короткие дефисы " - " → " — " чтобы splitSegments их ловил единообразно
+  text = text.replace(/([.,!?…:;])\s+-\s+/g, '$1 — ');
 
   // Защита коротких вставок-перебивок «— слышишь? —»
   const PROTECTED = [];
@@ -276,6 +303,11 @@ function formatParagraph(paragraph) {
   }));
 
   if (startsWithDash) classified[0].type = 'speech';
+  else {
+    // Без тире в начале: первый сегмент — повествование. Если начинается с имени
+    // собственного — это action (ремарка), иначе оставляем classify().
+    if (startsWithProperName(segments[0])) classified[0].type = 'action';
+  }
 
   for (let i = 1; i < classified.length; i++) {
     const prev = classified[i-1].type;
@@ -334,4 +366,4 @@ function processMessage(messageId) {
 eventSource.on(event_types.MESSAGE_RECEIVED, processMessage);
 eventSource.on(event_types.MESSAGE_EDITED, processMessage);
 
-console.log('[Russian Dialogue Formatter] loaded, version 1.2.0');
+console.log('[Russian Dialogue Formatter] loaded, version 1.3.0');
