@@ -567,16 +567,33 @@ function format(text) {
 function processMessage(messageId) {
   try {
     const ctx = SillyTavern.getContext();
-    const message = ctx.chat[messageId];
+    const chat = ctx.chat;
+    if (!chat || chat.length === 0) return;
+
+    // messageId может быть числом (индекс) или не передан вообще
+    let message;
+    if (typeof messageId === 'number' && chat[messageId]) {
+      message = chat[messageId];
+    } else {
+      // Берём последнее сообщение в чате (самое свежее)
+      message = chat[chat.length - 1];
+    }
+
     if (!message || !message.mes) return;
     if (message.is_user) return;
-    message.mes = format(message.mes);
+
+    const formatted = format(message.mes);
+    if (formatted !== message.mes) {
+      message.mes = formatted;
+    }
   } catch (e) {
     console.error('[Dialogue Formatter] error:', e);
   }
 }
 
+// Слушаем ВСЕ возможные события получения/обновления сообщения
 eventSource.on(event_types.MESSAGE_RECEIVED, processMessage);
 eventSource.on(event_types.MESSAGE_EDITED, processMessage);
+eventSource.on(event_types.GENERATION_ENDED, processMessage);
 
-console.log('[Russian Dialogue Formatter] loaded, version 1.6.0');
+console.log('[Russian Dialogue Formatter] loaded, version 1.6.1');
