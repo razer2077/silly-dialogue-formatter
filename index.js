@@ -1,6 +1,6 @@
 // Russian Dialogue Formatter for SillyTavern
 // Превращает «— реплика, — сказала она. — продолжение» в «"реплика," *сказала она.* "продолжение"»
-// v1.6.0 — расширенные списки глаголов (~710) и маркеров (~400)
+// v1.6.2 — fix splitSegments: любые пробелы вокруг тире
 
 import { eventSource, event_types } from '../../../../script.js';
 
@@ -577,4 +577,4 @@ eventSource.on(event_types.MESSAGE_RECEIVED, processMessage);
 eventSource.on(event_types.MESSAGE_EDITED, processMessage);
 eventSource.on(event_types.GENERATION_ENDED, processMessage);
 
-console.log('[Russian Dialogue Formatter] loaded, version 1.6.1');
+console.log('[Russian Dialogue Formatter] loaded, version 1.6.2');
