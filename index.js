@@ -321,6 +321,14 @@ function formatParagraph(paragraph) {
     }
   }
 
+  // Финальная проверка: если последний сегмент очень короткий (≤2 слов) и нет глагола ремарки —
+  // оставить тот же тип что у предыдущего (не отрывать односложники типа "Идём." в звёздочки)
+  const last = classified[classified.length - 1];
+  if (classified.length >= 2 && last.text.split(/\s+/).length <= 2 && !actionRe().test(last.text) && !nounRe().test(last.text) && !pronounRe().test(last.text)) {
+    // короткий сегмент без сигналов — это речь
+    last.type = 'speech';
+  }
+
   const out = classified.map(({text, type}) =>
     type === 'speech' ? `"${text}"` : `*${text}*`
   );
@@ -366,4 +374,4 @@ function processMessage(messageId) {
 eventSource.on(event_types.MESSAGE_RECEIVED, processMessage);
 eventSource.on(event_types.MESSAGE_EDITED, processMessage);
 
-console.log('[Russian Dialogue Formatter] loaded, version 1.3.0');
+console.log('[Russian Dialogue Formatter] loaded, version 1.4.0');
