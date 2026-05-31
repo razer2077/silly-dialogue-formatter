@@ -447,30 +447,11 @@ function startsWithActionSignature(text) {
 }
 
 function splitSegments(text) {
-  const parts = [];
-  let cur = '';
-  let i = 0;
-  while (i < text.length) {
-    const ch = text[i];
-    // Разделитель: пробел + (— или – или -) + пробел
-    if (ch === ' ' && (text[i+1] === '—' || text[i+1] === '–' || text[i+1] === '-') && text[i+2] === ' ') {
-      const last = cur[cur.length - 1];
-      // Для длинного тире: достаточно знака препинания слева ИЛИ начала реплики
-      // Для короткого дефиса: только если знак препинания слева (чтоб не цепляться за дефисы в словах)
-      const isDash = text[i+1] === '—' || text[i+1] === '–';
-      if (last && '.,!?…:;'.includes(last)) {
-        parts.push(cur);
-        cur = '';
-        i += 3;
-        continue;
-      }
-      // Для короткого "-" в качестве разделителя нужно чтобы он стоял в начале строки или после пунктуации — это уже выше
-    }
-    cur += ch;
-    i++;
-  }
-  if (cur) parts.push(cur);
-  return parts.map(p => p.trim()).filter(Boolean);
+  // Делим по: знак_препинания + любые_пробелы + тире + любые_пробелы (минимум 1 с какой-то стороны)
+  const normalized = text.replace(/([.,!?…:;])\s*[—–-]\s+/g, '$1\u0002');
+  // Также ловим вариант: пробелы + тире + без пробела справа НО за тире заглавная
+  const normalized2 = normalized.replace(/([.,!?…:;])\s+[—–-](?=[А-ЯЁA-Z])/g, '$1\u0002');
+  return normalized2.split('\u0002').map(p => p.trim()).filter(Boolean);
 }
 
 function formatParagraph(paragraph) {
